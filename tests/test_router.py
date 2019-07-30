@@ -1,7 +1,11 @@
 """ Tests for `peewee_migrate` module. """
-import peewee as pw
 import os
+
 import mock
+import peewee as pw
+
+
+MIGRATIONS_DIR = os.path.join('tests', 'migrations')
 
 MIGRATIONS_DIR = os.path.join('tests', 'migrations')
 
@@ -51,5 +55,25 @@ def test_router():
         assert MigrateHistory.select().count() == 1
 
     os.remove(os.path.join(MIGRATIONS_DIR, '001_initial.py'))
+
+    from peewee_migrate.router import load_models
+
+    models = load_models('tests.test_autodiscover')
+    assert models
+
+    models = load_models('tests.test_autodiscover')
+    assert models
+
+
+def test_router_compile(tmpdir):
+    from peewee_migrate.cli import get_router
+
+    migrations = tmpdir.mkdir('migrations')
+    router = get_router(str(migrations), 'sqlite:///:memory:')
+    router.compile('test_router_compile')
+
+    with open(str(migrations.join('001_test_router_compile.py'))) as f:
+        content = f.read()
+        assert 'SQL = pw.SQL' in content
 
 # pylama:ignore=W0621

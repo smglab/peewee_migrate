@@ -17,6 +17,7 @@ from peewee_migrate.migrator import Migrator
 CLEAN_RE = re.compile(r'\s+$', re.M)
 CURDIR = os.getcwd()
 DEFAULT_MIGRATE_DIR = os.path.join(CURDIR, 'migrations')
+UNDEFINED = object()
 VOID = lambda m, d: None # noqa
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'template.txt')) as t:
     MIGRATE_TEMPLATE = t.read()
@@ -74,11 +75,12 @@ class BaseRouter(object):
         """
         migrate = rollback = ''
         if auto:
+            # Need to append the CURDIR to the path for import to work.
+            sys.path.append(CURDIR)
             try:
                 modules = [auto]
                 if isinstance(auto, bool):
                     modules = [m for _, m, ispkg in pkgutil.iter_modules([CURDIR]) if ispkg]
-                    modules = ['example', 'tests']
 
                 models = [m for module in modules for m in load_models(module)]
 
@@ -159,7 +161,7 @@ class BaseRouter(object):
 
                 self.logger.info('Done %s', name)
 
-        except Exception as exc:
+        except Exception:
             self.database.rollback()
             operation = 'Migration' if not downgrade else 'Rollback'
             self.logger.exception('%s failed: %s', operation, name)
@@ -269,7 +271,10 @@ def load_models(module):
     )}
 
 
-def _import_submodules(package, passed=set()):
+def _import_submodules(package, passed=UNDEFINED):
+    if passed is UNDEFINED:
+        passed = set()
+
     if isinstance(package, str):
         package = import_module(package)
 
